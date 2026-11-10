@@ -54,6 +54,15 @@ export function makeHandler(store) {
           return json({ links: { mel: `${site}/?p=${s.tokens.mel}`, russ: `${site}/?p=${s.tokens.russ}` } });
         }
 
+        // Start over: wipe everything so the site shows the setup screen again.
+        if (body.type === 'reset') {
+          const { state } = await load();
+          if (!state) return json({ ok: true });
+          if (!whoIs(state, body.p)) return json({ error: 'not-a-player' }, 403);
+          await Promise.all(['state', 'call', 'seen-mel', 'seen-russ'].map((k) => store.delete(k)));
+          return json({ ok: true });
+        }
+
         // Camera & voice: pass the two phones' connection details between them.
         if (typeof body.type === 'string' && body.type.startsWith('call-')) {
           const { state } = await load();

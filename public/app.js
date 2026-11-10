@@ -19,8 +19,12 @@ const store = {
 };
 
 const params = new URLSearchParams(location.search);
-let token = params.get('p') || store.get('mvr-token');
-if (params.get('p')) store.set('mvr-token', params.get('p'));
+const urlTok = params.get('p');
+const savedTok = store.get('mvr-token');
+let token = urlTok || savedTok;
+// Opening someone else's link on this phone? Ask before switching.
+let switchFrom = urlTok && savedTok && urlTok !== savedTok ? savedTok : null;
+if (urlTok && !switchFrom) store.set('mvr-token', urlTok);
 
 let S = null;                 // latest game state from the server
 let offset = 0;               // server clock minus phone clock
@@ -99,9 +103,23 @@ async function poll(force = false) {
   if (!document.hidden || force) {
     try {
       const { status, data } = await getState(force);
-      if (status === 403) { store.del('mvr-token'); token = null; renderNoAccess(); return; }
+      if (status === 403 && switchFrom) { token = switchFrom; switchFrom = null; history.replaceState(null, '', '/?p=' + token); return poll(true); }
+      if (status === 403) { store.del('mvr-token'); store.del('mvr-me'); token = null; renderNoAccess(); return; }
       if (data.needsSetup) { renderSetup(); return; }
       const changed = !!data.state;
+      if (switchFrom && data.state) {
+        const was = store.get('mvr-me');
+        const now = data.state.me;
+        if (was && was !== now && !confirm(`This link is ${NAMES[now]}'s, but this phone plays as ${NAMES[was]}.\n\nSwitch this phone to ${NAMES[now]}?\n\n(Tap Cancel to stay as ${NAMES[was]}.)`)) {
+          token = switchFrom; switchFrom = null;
+          history.replaceState(null, '', '/?p=' + token);
+          return poll(true);
+        }
+        store.set('mvr-token', token);
+      store.set('mvr-me', me);
+        switchFrom = null;
+      }
+      if (data.state) store.set('mvr-me', data.state.me);
       absorb(data);
       if (changed || force) render(); else renderPresence();
       if ('call' in data) onCallData(data.call);
@@ -250,6 +268,8 @@ function render() {
   $view.innerHTML = html;
   wire();
   renderCall();
+  const chip = document.getElementById('youChip');
+  if (chip) { chip.textContent = `You're ${NAMES[me]}`; chip.hidden = false; }
   document.title = (S.phase === 'play' && isMyTurn()) || (S.phase === 'toss' && S.toss.tosser === me)
     ? '● Your move · Mel v Russ' : 'Mel v Russ';
 }
@@ -555,6 +575,7 @@ document.getElementById('menuBtn').addEventListener('click', () => {
       <label for="mPhone">${opp}'s WhatsApp number (optional — opens their chat directly)</label>
       <input id="mPhone" inputmode="tel" placeholder="e.g. 07700 900123" value="${store.get('mvr-opp-phone') || ''}">
       ${S.phase === 'play' ? '<button class="btn danger ghost" id="mResign">Resign this game</button>' : ''}
+      <button class="btn danger ghost" id="mReset">Start over (new links, score 0–0)</button>
       <button class="btn ghost" id="mClose">Close</button>
     </div>`;
   document.body.appendChild(bg);
@@ -566,6 +587,15 @@ document.getElementById('menuBtn').addEventListener('click', () => {
   bg.addEventListener('click', (e) => { if (e.target === bg) close(); });
   bg.querySelector('#mClose').onclick = close;
   bg.querySelector('#mCopy').onclick = () => copy(S.myLink);
+  bg.querySelector('#mReset').onclick = async () => {
+    const typed = prompt(`Start over from scratch?\n\nThis wipes the scoreboard and the current game, and both private links stop working. You'll set up again and send ${opp} a new link.\n\nType RESET to confirm.`);
+    if (!typed || typed.trim().toUpperCase() !== 'RESET') return;
+    try {
+      await post({ type: 'reset' });
+      ['mvr-token', 'mvr-me', 'mvr-toss-shown'].forEach((k) => store.del(k));
+      location.href = '/';
+    } catch (e) { toast(e.message); }
+  };
   const r = bg.querySelector('#mResign');
   if (r) r.onclick = () => {
     if (confirm(`Resign this game? ${opp} gets the win.`)) { close(); act({ type: 'resign' }); }
