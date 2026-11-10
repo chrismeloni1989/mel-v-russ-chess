@@ -1,0 +1,11 @@
+{
+  "name": "mel-v-russ-chess",
+  "version": "1.0.0",
+  "description": "Mel v Russ chess on Netlify",
+  "dependencies": {
+    "@netlify/blobs": "^11.1.4",
+    "chess.js": "1.4.0"
+  },
+  "private": true,
+  "type": "module"
+}

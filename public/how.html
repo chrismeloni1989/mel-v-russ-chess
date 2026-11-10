@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#17140f">
+  <meta name="robots" content="noindex">
+  <title>How It Works</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='22' fill='%2317140f'/><text x='50' y='72' font-size='64' text-anchor='middle' fill='%23d9a94b'>♞</text></svg>">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400..700;1,9..144,400&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/app.css">
+  <style>
+    .doc { gap: 14px; }
+    .doc h1 { font-family: var(--display); font-size: 32px; margin: 6px 0 0; font-weight: 600; }
+    .doc .lede { color: var(--muted); line-height: 1.55; margin: 0; }
+    .sec { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px 16px 14px; }
+    .sec h2 { font-family: var(--display); font-size: 21px; margin: 0 0 8px; font-weight: 600; display: flex; gap: 10px; align-items: center; }
+    .sec h2 .n { width: 28px; height: 28px; border-radius: 50%; background: var(--brass); color: var(--brass-ink); display: grid; place-items: center; font-family: var(--ui); font-size: 14px; font-weight: 700; flex: none; }
+    .sec p, .sec li { color: #ddd2bf; line-height: 1.55; font-size: 15px; }
+    .sec p { margin: 0 0 8px; }
+    .sec ul, .sec ol { margin: 0 0 4px; padding-left: 20px; }
+    .sec li { margin-bottom: 6px; }
+    .sec b { color: var(--text); }
+    .two { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 4px; }
+    .mode { background: var(--bg2); border: 1px solid var(--line); border-radius: 12px; padding: 12px; }
+    .mode h3 { margin: 0 0 6px; font-size: 15px; display: flex; align-items: center; gap: 8px; }
+    .mode p { font-size: 14px; margin: 0; color: var(--muted); }
+    @media (max-width: 420px) { .two { grid-template-columns: 1fr; } }
+    .back { display: inline-flex; align-items: center; gap: 6px; text-decoration: none; font-weight: 600; }
+  </style>
+</head>
+<body>
+  <main class="app doc">
+    <div class="top">
+      <div class="brand">Mel <em>v</em> Russ</div>
+      <a class="back" href="/">← Back to the board</a>
+    </div>
+
+    <h1>How it works</h1>
+    <p class="lede">A private chess board for two. Play live when you're both on, with camera and voice if you like, or take your time and pass the turn over WhatsApp. The board always remembers where you left off.</p>
+
+    <section class="sec">
+      <h2><span class="n">1</span>Your private link</h2>
+      <p>Each of you has your own link. It's what tells the board whether you're Mel or Russ, so <b>don't share yours</b>, and only send the other player <b>their</b> link.</p>
+      <ul>
+        <li>The first person to open the site sets it up, then sends the other person their link on WhatsApp.</li>
+        <li>On your phone, open your link and choose <b>Add to Home Screen</b>. It then works like an app.</li>
+        <li>Lost your link? Ask the other player to open the menu (☰) and tap <b>Re-send their link</b>.</li>
+      </ul>
+    </section>
+
+    <section class="sec">
+      <h2><span class="n">2</span>Starting a game</h2>
+      <p><b>The very first game:</b> whoever wants to play taps <b>Start a new game</b>. The other player then tosses the coin.</p>
+      <ul>
+        <li><b>Heads</b>: the person who started the game is White.</li>
+        <li><b>Tails</b>: the person who tossed is White.</li>
+      </ul>
+      <p><b>After that:</b> no more coin. The starting player swaps each game, and <b>White always moves first</b>. Either of you can tap <b>Start next game</b> when a game ends.</p>
+    </section>
+
+    <section class="sec">
+      <h2><span class="n">3</span>Live or turn by turn</h2>
+      <p>There's no switch to flip. The same board does both.</p>
+      <div class="two">
+        <div class="mode">
+          <h3><span class="dot on"></span>Both on together</h3>
+          <p>A green dot shows the other player is on the board. Moves appear on both phones within a couple of seconds. Just play.</p>
+        </div>
+        <div class="mode">
+          <h3><span class="dot"></span>Taking turns</h3>
+          <p>Make your move, then tap the green <b>WhatsApp</b> button. It opens WhatsApp with "Your move" and the link ready. Just hit send.</p>
+        </div>
+      </div>
+      <p style="margin-top:10px">WhatsApp can't send by itself, so you always tap send. Add the other player's number in the menu (☰) and WhatsApp opens straight to their chat.</p>
+    </section>
+
+    <section class="sec">
+      <h2><span class="n">4</span>Moving pieces</h2>
+      <ul>
+        <li><b>Tap a piece</b>, then tap where it should go. Dots show the allowed squares, and rings show captures.</li>
+        <li>Only legal moves are allowed, including castling, en passant and pawn promotion. You pick the piece when a pawn promotes.</li>
+        <li>The last move is highlighted so you can see what the other player did.</li>
+      </ul>
+    </section>
+
+    <section class="sec">
+      <h2><span class="n">5</span>Undo (5 seconds)</h2>
+      <p>Tapped the wrong square? An <b>Undo</b> button appears for <b>5 seconds</b> after your move, with a bar counting down. After that, or once the other player has replied, the move stands.</p>
+    </section>
+
+    <section class="sec">
+      <h2><span class="n">6</span>Check, checkmate and draws</h2>
+      <ul>
+        <li><b>Check</b> is shown automatically: the king's square glows red and the board says <b>Check!</b></li>
+        <li><b>Checkmate</b> ends the game straight away and the winner gets a point.</li>
+        <li><b>Draws</b> are detected automatically: stalemate, not enough pieces left to mate, the same position three times, or the 50-move rule.</li>
+        <li>You can <b>resign</b> from the menu (☰). The other player gets the point.</li>
+      </ul>
+    </section>
+
+    <section class="sec">
+      <h2><span class="n">7</span>Captured pieces and scoreboard</h2>
+      <p>The pieces each of you has taken sit next to your name. A <b>+number</b> shows who's ahead on material (pawn 1, knight and bishop 3, rook 5, queen 9).</p>
+      <p>The scoreboard at the top keeps the running total of <b>wins for Mel, wins for Russ, and draws</b>.</p>
+    </section>
+
+    <section class="sec">
+      <h2><span class="n">8</span>Camera and voice</h2>
+      <p>When you're both on the game, you can see and hear each other while you play. A small video of each of you sits next to your names, beside the board.</p>
+      <ol>
+        <li>Tap <b>Camera &amp; voice</b> (under the board).</li>
+        <li>The first time, your phone asks to use the camera and microphone. Tap <b>Allow</b>.</li>
+        <li>The other player sees a green <b>"… wants camera &amp; voice — Join"</b> button. When they tap it, you're connected.</li>
+      </ol>
+      <ul>
+        <li><b>Mic button</b>: mute or unmute yourself.</li>
+        <li><b>Camera button</b>: turn your camera off or on. They can still hear you.</li>
+        <li><b>Red button</b>: end camera and voice for both of you. The game carries on.</li>
+      </ul>
+      <p><b>Wi-Fi only:</b> camera and voice need you both on Wi-Fi. On mobile data it often can't connect and says so.</p>
+      <p><b>Leaving the game:</b> if you lock your phone or switch to another app, your camera stops. When you come back, tap <b>Camera &amp; voice</b> again.</p>
+      <p>The video goes straight between your two phones. It isn't recorded or stored anywhere.</p>
+    </section>
+
+    <a class="btn primary" href="/">Back to the board</a>
+    <div class="footer">Piece artwork: cburnett set, CC BY-SA 3.0</div>
+  </main>
+</body>
+</html>
