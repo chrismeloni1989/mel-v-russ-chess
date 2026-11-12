@@ -196,7 +196,7 @@ a.btn { text-decoration: none; }
 .btn.wa.ghost { background: transparent; color: var(--green); border-color: rgba(95, 194, 122, .35); font-weight: 500; }
 
 /* ---------- camera & voice ---------- */
-.vslot { display: none; position: relative; width: 60px; height: 80px; border-radius: 12px; overflow: hidden; flex: none;
+.vslot { display: none; position: relative; width: 120px; height: 160px; border-radius: 14px; overflow: hidden; flex: none;
   background: #0d0b08; border: 1px solid var(--line); }
 .vslot.on { display: block; }
 .vslot[data-slot="opp"].on { border-color: var(--brass); }
@@ -204,12 +204,12 @@ a.btn { text-decoration: none; }
 .vslot .vid.me { transform: scaleX(-1); }
 .vslot[data-state="wait"]::after, .vslot[data-slot="me"].camoff::after {
   content: attr(data-label); position: absolute; inset: 0; display: grid; place-items: center; text-align: center;
-  font-size: 10px; color: var(--muted); background: #0d0b08; padding: 4px;
+  font-size: 13px; color: var(--muted); background: #0d0b08; padding: 6px;
 }
 .vslot[data-slot="me"].camoff::after { content: "Camera off"; }
 .vslot[data-state="wait"][data-label=""]::after { display: none; }
 .callstrip { display: flex; gap: 10px; justify-content: center; }
-.callstrip .vslot.on { width: 96px; height: 128px; }
+.callstrip .vslot.on { width: 150px; height: 200px; }
 
 .callbar { display: flex; flex-direction: column; align-items: center; gap: 6px; }
 .callbar:empty { display: none; }
