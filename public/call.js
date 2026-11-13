@@ -17,6 +17,7 @@ let status = 'off';          // off | waiting | connecting | live | failed
 let micOn = true, camOn = true;
 let connectTimer = null;
 let busy = false;
+let lastActive = false;     // so the game can switch layouts when a call starts or stops
 
 const vMe = mkVideo(true);
 const vOpp = mkVideo(false);
@@ -222,6 +223,10 @@ export function renderCall() {
   const opp = ctx.oppName();
   const invited = !want && call && fresh(call) && call.from !== ctx.me() && !call.answer;
   const active = want || status === 'live';
+  if (active !== lastActive) {
+    lastActive = active;
+    if (ctx.onActiveChange) { ctx.onActiveChange(); return; } // redraws, then comes back here
+  }
 
   // place the two little videos
   const sOpp = document.querySelector('[data-slot="opp"]');

@@ -1,5 +1,5 @@
 import { Chess } from '/vendor/chess.js';
-import { initCall, onCallData, renderCall, fastPoll } from '/call.js';
+import { initCall, onCallData, renderCall, fastPoll, callActive } from '/call.js';
 
 /* ------------------------------------------------------------------ */
 /* Basics                                                              */
@@ -250,7 +250,9 @@ function render() {
   clearInterval(undoTimer);
   const me = S.me, opp = other(me);
   const g = S.game;
-  let html = scoreHtml();
+  const callMode = !!g && callActive();
+  document.body.classList.toggle('callmode', callMode);
+  let html = callMode ? '' : scoreHtml();
 
   if (!g && S.phase === 'idle') {
     html += callStrip() + `
@@ -262,7 +264,7 @@ function render() {
   } else if (S.phase === 'toss') {
     html += callStrip() + tossPanel();
   } else if (g) {
-    html += gameHtml();
+    html += gameHtml(callMode);
   }
 
   $view.innerHTML = html;
@@ -335,7 +337,7 @@ function isMyTurn() {
   return (turn === 'w' ? g.white : g.black) === S.me;
 }
 
-function gameHtml() {
+function gameHtml(callMode = false) {
   const me = S.me, opp = other(me), g = S.game;
   const chess = chessFor(g);
   const myColor = g.white === me ? 'w' : 'b';
@@ -413,6 +415,41 @@ function gameHtml() {
   }
   if (S.phase === 'over') {
     actions.push(`<button class="btn primary" data-act="new">Start next game</button>`);
+  }
+
+  if (callMode) {
+    // Compact layout for camera & voice: everything fits on one screen, no scrolling.
+    let short = status;
+    if (S.phase === 'play' && cls === 'check') short = turnPlayer === me ? 'Check! Your move' : `Check! ${NAMES[opp]}'s move`;
+    const undo = undoLeft > 0
+      ? `<button class="btn undo mini" data-act="undo" id="undoBtn">${icon.undo} Undo <span class="bar" id="undoBar" style="width:${(undoLeft / UNDO_MS) * 100}%"></span></button>` : '';
+    const draws = S.score.draws ? ` <span class="dr">· ${S.score.draws} draw${S.score.draws === 1 ? '' : 's'}</span>` : '';
+    return `
+    <div class="callhead">
+      <div class="vslot big" data-slot="opp"><div class="vslot pip" data-slot="me"></div></div>
+      <div class="cside">
+        <div class="crow">
+          <span class="pname"><span class="dot ${pres.oppOnline ? 'on' : ''}" id="oppDot"></span>${NAMES[opp]}
+            <span class="chip ${oppColor}">${oppColor === 'w' ? 'White' : 'Black'}</span></span>
+          <button class="iconbtn sm" id="menuBtn2" aria-label="Menu"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
+        </div>
+        ${capsHtml(oppColor, -adv)}
+        <div class="cscore">Mel <b>${S.score.mel}</b> – <b>${S.score.russ}</b> Russ${draws}</div>
+        <div class="status small ${cls}">${short}</div>
+        <div class="callbar" id="callbar"></div>
+      </div>
+    </div>
+    <div class="boardwrap">
+      ${boardHtml(chess, myColor)}
+      ${overlay}
+    </div>
+    <div class="pbar mine">
+      <span class="pname">${NAMES[me]} <span class="chip ${myColor}">${myColor === 'w' ? 'White' : 'Black'}</span></span>
+      ${undo}
+      ${capsHtml(myColor, adv)}
+    </div>
+    ${S.phase === 'over' ? '<div class="actions"><button class="btn primary" data-act="new">Start next game</button></div>' : ''}
+    ${promoPick ? promoSheet(myColor) : ''}`;
   }
 
   return `
@@ -500,6 +537,9 @@ function wire() {
     const b = e.target.closest('[data-sq]');
     if (b) tap(b.dataset.sq);
   });
+
+  const m2 = document.getElementById('menuBtn2');
+  if (m2) m2.addEventListener('click', () => document.getElementById('menuBtn').click());
 
   const over = document.getElementById('overOverlay');
   if (over) over.addEventListener('click', () => { overDismissed = S.game.no; over.remove(); });
@@ -612,6 +652,7 @@ initCall({
   oppName: () => (S ? NAMES[other(S.me)] : ''),
   oppOnline: () => pres.oppOnline,
   offset: () => offset,
+  onActiveChange: () => render(),
 });
 if (token) poll(true);
 else {

@@ -230,3 +230,35 @@ a.btn { text-decoration: none; }
   font-size: 11px; font-weight: 600; color: #fff; text-shadow: 0 1px 2px rgba(0,0,0,.8); }
 .youchip { margin-left: auto; margin-right: 4px; font-size: 13px; font-weight: 600; color: var(--brass);
   border: 1px solid rgba(217,169,75,.45); border-radius: 99px; padding: 4px 10px; white-space: nowrap; }
+
+/* ---------- call mode: compact layout that fits one screen ---------- */
+body.callmode .top, body.callmode .footer { display: none; }
+body.callmode .app { padding-top: max(8px, env(safe-area-inset-top)); padding-bottom: max(8px, env(safe-area-inset-bottom)); }
+body.callmode #view { display: flex; flex-direction: column; gap: 8px; }
+body.callmode .boardwrap { width: min(100%, calc(100dvh - 240px)); margin: 0 auto; }
+body.callmode .board { box-shadow: 0 0 0 4px #3a2b1c, 0 0 0 5px #54402a, 0 10px 24px rgba(0,0,0,.45); }
+.callhead { display: flex; gap: 10px; align-items: stretch; }
+.callhead .vslot.big.on { width: 120px; height: 160px; border-color: var(--brass); }
+.vslot.pip.on { position: absolute; right: 5px; bottom: 5px; width: 40px; height: 54px; border-radius: 8px; z-index: 3;
+  border: 1px solid rgba(255,255,255,.55); box-shadow: 0 2px 8px rgba(0,0,0,.5); }
+.vslot.pip::after { font-size: 8px !important; padding: 2px !important; }
+.cside { flex: 1; min-width: 0; display: flex; flex-direction: column; justify-content: space-between; gap: 2px; }
+.crow { display: flex; align-items: center; justify-content: space-between; gap: 6px; }
+.iconbtn.sm { width: 34px; height: 34px; border-radius: 10px; flex: none; }
+.iconbtn.sm svg { width: 18px; height: 18px; }
+.cside .caps { margin-left: 0; justify-content: flex-start; min-height: 20px; }
+.cside .caps i { width: 18px; height: 18px; }
+.cscore { font-size: 13px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cscore b { color: var(--text); font-family: var(--display); font-size: 17px; font-weight: 600; }
+.cscore .dr { font-size: 12px; }
+.status.small { font-size: 18px; text-align: left; min-height: 0; line-height: 1.2; }
+.cside .callbar { align-items: flex-start; gap: 2px; }
+.cside .ctrls { gap: 8px; }
+.cside .cround { width: 38px; height: 38px; }
+.cside .cround svg { width: 18px; height: 18px; }
+.cside .cbtn.retry { padding: 6px 10px; font-size: 12px; }
+.cside .cnote { text-align: left; font-size: 11px; line-height: 1.25; }
+body.callmode .pbar { min-height: 34px; padding: 0; }
+.btn.undo.mini { width: auto; padding: 6px 12px; font-size: 13px; gap: 6px; flex: none; }
+.btn.undo.mini svg { width: 15px; height: 15px; }
+.crow .pname { font-weight: 600; display: flex; align-items: center; gap: 7px; white-space: nowrap; min-width: 0; }
