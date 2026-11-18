@@ -295,3 +295,10 @@ body.callmode .pbar { min-height: 34px; padding: 0; }
 .cround.fix.warn { background: var(--brass); border-color: var(--brass); color: var(--brass-ink); animation: pulse 1.6s ease-in-out infinite; }
 .cside .ctrls { gap: 6px; flex-wrap: wrap; }
 .cside .cround { width: 35px; height: 35px; }
+
+.tapplay { position: absolute; inset: 0; z-index: 4; border: 0; background: rgba(16,13,9,.72); color: #fff;
+  font-weight: 700; font-size: 14px; padding: 10px; cursor: pointer; line-height: 1.3; }
+.diag { width: 100%; border-collapse: collapse; font-size: 13px; }
+.diag th, .diag td { padding: 6px 4px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
+.diag th { color: var(--muted); font-weight: 600; font-size: 12px; }
+.diag .ok { color: var(--green); } .diag .bad { color: var(--red); font-weight: 700; }

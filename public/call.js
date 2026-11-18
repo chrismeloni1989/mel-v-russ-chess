@@ -21,6 +21,8 @@ let lastActive = false;
 let paused = false;          // camera/mic released while the game is in the background
 let needTap = false;         // couldn't restart camera/mic by itself; ask for a tap
 let sendIssue = false;       // our sound doesn't seem to be reaching the other phone
+let blocked = false;         // the phone refused to play the other person's video/sound until tapped
+const VERSION = '6';
 const inst = Math.random().toString(36).slice(2);
 const MEDIA = {
   video: { facingMode: 'user', width: { ideal: 320 }, height: { ideal: 240 }, frameRate: { ideal: 15, max: 20 } },
@@ -125,7 +127,7 @@ function newPc(id) {
   local.getTracks().forEach((t) => pc.addTrack(t, local));
   pc.ontrack = (e) => {
     vOpp.srcObject = e.streams[0];
-    vOpp.play().catch(() => {});
+    playOpp();
   };
   pc.onconnectionstatechange = () => {
     const s = pc && pc.connectionState;
@@ -318,6 +320,18 @@ export function renderCall() {
     sOpp.dataset.label = status === 'failed' ? 'No link' : status === 'live' ? '' : 'Waiting…';
   }
   if (sMe) sMe.classList.toggle('camoff', !camOn);
+  if (sOpp) {
+    let tp = sOpp.querySelector('.tapplay');
+    if (blocked && status === 'live') {
+      if (!tp) {
+        tp = document.createElement('button');
+        tp.className = 'tapplay';
+        tp.addEventListener('click', () => playOpp(true).then(() => { blocked = false; renderCall(); }));
+        sOpp.appendChild(tp);
+      }
+      tp.textContent = `Tap to see & hear ${opp}`;
+    } else if (tp) tp.remove();
+  }
 
   const bar = document.getElementById('callbar');
   if (!bar) return;
@@ -354,10 +368,71 @@ export function renderCall() {
   }));
 }
 
+// Play the other person's video. Some phones (iPhones especially) refuse unless tapped:
+// then show the picture silently if allowed, and put a 'tap to see & hear' button on it.
+function playOpp(fromTap = false) {
+  if (!vOpp.srcObject) return Promise.resolve();
+  vOpp.muted = false;
+  return vOpp.play().then(() => {
+    if (blocked) { blocked = false; renderCall(); }
+  }).catch(() => {
+    if (fromTap) return;
+    blocked = true;
+    vOpp.muted = true;                 // at least show the picture
+    vOpp.play().catch(() => {});
+    renderCall();
+  });
+}
+setInterval(() => {
+  if (status === 'live' && vOpp.srcObject && !document.hidden && (vOpp.paused || vOpp.muted) && !blocked) {
+    playOpp();
+  }
+}, 2000);
+
+/* ---------------- call check (what each phone is sending / receiving) ---------------- */
+function device() {
+  const u = navigator.userAgent;
+  const os = /iPhone|iPad/.test(u) ? `iPhone iOS ${((u.match(/OS (\d+)_(\d+)/) || []).slice(1).join('.')) || '?'}`
+    : /Android/.test(u) ? `Android ${(u.match(/Android (\d+)/) || [])[1] || ''}` : 'Computer';
+  const br = /SamsungBrowser/.test(u) ? 'Samsung Internet' : /CriOS|Chrome/.test(u) ? 'Chrome' : /FxiOS|Firefox/.test(u) ? 'Firefox' : /Safari/.test(u) ? 'Safari' : 'browser';
+  return `${os}, ${br}`;
+}
+export async function myDiag() {
+  const tr = (k) => {
+    const t = local && local.getTracks().find((x) => x.kind === k);
+    if (!t) return 'none';
+    if (t.readyState === 'ended') return 'stopped';
+    if (!t.enabled) return 'switched off';
+    return t.muted ? 'blocked by phone' : 'on';
+  };
+  let sentA = 0, sentV = 0, recvA = 0, recvV = 0;
+  if (pc) {
+    try {
+      (await pc.getStats()).forEach((r) => {
+        if (r.type === 'outbound-rtp') { if (r.kind === 'audio') sentA += r.bytesSent || 0; else sentV += r.bytesSent || 0; }
+        if (r.type === 'inbound-rtp') { if (r.kind === 'audio') recvA += r.bytesReceived || 0; else recvV += r.bytesReceived || 0; }
+      });
+    } catch {}
+  }
+  return {
+    ver: VERSION, dev: device(), status, link: pc ? pc.connectionState : 'none',
+    cam: tr('video'), mic: tr('audio'),
+    sentA: Math.round(sentA / 1024), sentV: Math.round(sentV / 1024), recvA: Math.round(recvA / 1024), recvV: Math.round(recvV / 1024),
+    showing: !!(vOpp.srcObject && !vOpp.paused && vOpp.videoWidth > 0), sound: !!(vOpp.srcObject && !vOpp.paused && !vOpp.muted),
+    blocked, away: document.hidden,
+  };
+}
+let diagCount = 0;
+setInterval(async () => {
+  if (!ctx || !(want || status === 'live')) { diagCount = 0; return; }
+  if (diagCount++ % 2) return;                     // every ~6 seconds
+  try { await ctx.post({ type: 'call-diag', d: await myDiag() }); } catch {}
+}, 3000);
+
 function place(v, slot) {
   const target = slot || hold;
   if (v.parentNode !== target) {
     target.appendChild(v);
-    if (v.srcObject) v.play().catch(() => {});
+    if (v === vOpp) playOpp(); else if (v.srcObject) v.play().catch(() => {});
   }
 }

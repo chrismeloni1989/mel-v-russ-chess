@@ -1,5 +1,5 @@
 import { Chess } from '/vendor/chess.js';
-import { initCall, onCallData, renderCall, fastPoll, callActive } from '/call.js';
+import { initCall, onCallData, renderCall, fastPoll, callActive, myDiag } from '/call.js';
 
 /* ------------------------------------------------------------------ */
 /* Basics                                                              */
@@ -38,7 +38,8 @@ let tossShownAt = Number(store.get('mvr-toss-shown') || 0);
 let tossAnim = null;          // { result, white, until }
 let promoPick = null;         // { from, to }
 let lastMoveCount = null;
-let overDismissed = null;     // game number whose result card was tapped away
+let overDismissed = null;
+let oppDiag = null;           // the other phone's latest camera & voice report     // game number whose result card was tapped away
 
 const serverNow = () => Date.now() + offset;
 
@@ -128,6 +129,7 @@ async function poll(force = false) {
       if (data.state) store.set('mvr-me', data.state.me);
       absorb(data);
       if (changed || force) render(); else renderPresence();
+      if ('oppDiag' in data) oppDiag = data.oppDiag;
       if ('call' in data) onCallData(data.call);
     } catch {
       // network blip — just try again next time
@@ -651,6 +653,7 @@ document.getElementById('menuBtn').addEventListener('click', () => {
       <input id="mPhone" inputmode="tel" placeholder="e.g. 07700 900123" value="${store.get('mvr-opp-phone') || ''}">
       ${drawMenuItem()}
       ${S.phase === 'play' ? '<button class="btn danger ghost" id="mResign">Resign this game</button>' : ''}
+      <button class="btn" id="mDiag">📶 Camera &amp; voice check</button>
       <button class="btn danger ghost" id="mReset">Start over (new links, score 0–0)</button>
       <button class="btn ghost" id="mClose">Close</button>
     </div>`;
@@ -672,6 +675,7 @@ document.getElementById('menuBtn').addEventListener('click', () => {
       location.href = '/';
     } catch (e) { toast(e.message); }
   };
+  bg.querySelector('#mDiag').onclick = () => { close(); showDiag(); };
   const md = bg.querySelector('#mDraw');
   if (md) md.onclick = () => {
     if (confirm(`Offer ${opp} a draw?\n\nIf ${opp} accepts, the game ends as a draw.`)) { close(); act({ type: 'offer-draw' }); }
@@ -711,4 +715,43 @@ function drawMenuItem() {
   return isMyTurn()
     ? '<button class="btn" id="mDraw">½ Offer a draw</button>'
     : '<button class="btn ghost" disabled>½ Offer a draw (on your turn)</button>';
+}
+
+/* ------------------------------------------------------------------ */
+/* Camera & voice check: what each phone is sending and receiving     */
+/* ------------------------------------------------------------------ */
+function esc(t) { return String(t).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
+async function showDiag() {
+  const opp = NAMES[other(S.me)];
+  const bg = document.createElement('div');
+  bg.className = 'sheet-bg';
+  bg.innerHTML = `<div class="sheet"><h3>Camera &amp; voice check</h3><div id="diagBody">Checking…</div>
+    <p style="font-size:12px;color:var(--muted);margin:0">Screenshot this and send it to Claude if something isn't working.</p>
+    <button class="btn ghost" id="dClose">Close</button></div>`;
+  document.body.appendChild(bg);
+  let timer;
+  const close = () => { clearInterval(timer); bg.remove(); };
+  bg.addEventListener('click', (e) => { if (e.target === bg) close(); });
+  bg.querySelector('#dClose').onclick = close;
+  const yes = (v, good = 'yes', bad = 'NO') => (v ? `<span class="ok">${good}</span>` : `<span class="bad">${bad}</span>`);
+  const val = (v) => (v === 'on' ? '<span class="ok">on</span>' : v === 'none' ? '—' : `<span class="bad">${esc(v)}</span>`);
+  const kb = (n, live) => (n > 0 ? `<span class="ok">${n} kB</span>` : live ? '<span class="bad">nothing</span>' : '0');
+  const draw = async () => {
+    const m = await myDiag();
+    const o = oppDiag;
+    const age = o ? Math.round((Date.now() + 0 - o.at) / 1000) : null;
+    const col = (d, live) => d ? [
+      esc(d.dev), esc(d.ver), esc(d.status) + (d.away ? ' (game in background)' : ''), esc(d.link),
+      val(d.cam), val(d.mic),
+      `sound ${kb(d.sentA, live)}<br>video ${kb(d.sentV, live)}`,
+      `sound ${kb(d.recvA, live)}<br>video ${kb(d.recvV, live)}`,
+      `${yes(d.showing, 'picture yes', 'picture NO')}<br>${yes(d.sound, 'sound yes', 'sound NO')}${d.blocked ? '<br><span class="bad">waiting for a tap</span>' : ''}`,
+    ] : Array(9).fill('—');
+    const a = col(m, m.status === 'live'), b = col(o && age < 60 ? o : null, o && o.status === 'live');
+    const rows = ['Phone', 'Game version', 'Call', 'Connection', 'Camera', 'Microphone', 'Sending', 'Receiving', 'Playing on screen'];
+    bg.querySelector('#diagBody').innerHTML = `<table class="diag"><tr><th></th><th>${NAMES[S.me]} (this phone)</th><th>${opp}${o && age < 60 ? ` (${age}s ago)` : ''}</th></tr>
+      ${rows.map((r, i) => `<tr><th>${r}</th><td>${a[i]}</td><td>${b[i]}</td></tr>`).join('')}</table>
+      ${!o || age >= 60 ? `<p style="font-size:12px;color:var(--muted);margin:6px 0 0">No report from ${opp}'s phone yet. It appears once ${opp} has camera &amp; voice switched on.</p>` : ''}`;
+  };
+  draw(); timer = setInterval(draw, 2000);
 }

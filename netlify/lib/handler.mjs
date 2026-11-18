@@ -32,12 +32,13 @@ export function makeHandler(store) {
         if (!state) return json({ needsSetup: true });
         const me = whoIs(state, tok);
         if (!me) return json({ error: 'not-a-player' }, 403);
-        const [pres, call] = await Promise.all([
+        const [pres, call, oppDiag] = await Promise.all([
           presence(me, url.searchParams.get('ping') === '1'),
           store.get('call', { type: 'json' }),
+          store.get(`diag-${other(me)}`, { type: 'json' }),
         ]);
         const since = Number(url.searchParams.get('v') || 0);
-        const base = { now: Date.now(), ...pres, call: call || null };
+        const base = { now: Date.now(), ...pres, call: call || null, oppDiag: oppDiag || null };
         if (since === state.v) return json({ ...base, same: true });
         return json({ ...base, state: view(state, me, site) });
       }
@@ -69,6 +70,12 @@ export function makeHandler(store) {
           if (!state) return json({ error: 'Game not set up yet.' }, 409);
           const me = whoIs(state, body.p);
           if (!me) return json({ error: 'not-a-player' }, 403);
+          if (body.type === 'call-diag') {
+            const d = body.d && typeof body.d === 'object' ? body.d : {};
+            if (JSON.stringify(d).length > 4000) return json({ error: 'Too big.' }, 413);
+            await store.setJSON(`diag-${me}`, { ...d, at: Date.now() });
+            return json({ ok: true });
+          }
           const id = String(body.id || '').slice(0, 20);
           const sdp = typeof body.sdp === 'string' ? body.sdp.slice(0, 20000) : '';
           const cur = await store.get('call', { type: 'json' });
