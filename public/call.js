@@ -17,7 +17,25 @@ let status = 'off';          // off | waiting | connecting | live | failed
 let micOn = true, camOn = true;
 let connectTimer = null;
 let busy = false;
-let lastActive = false;     // so the game can switch layouts when a call starts or stops
+let lastActive = false;
+let paused = false;          // camera/mic released while the game is in the background
+let needTap = false;         // couldn't restart camera/mic by itself; ask for a tap
+let sendIssue = false;       // our sound doesn't seem to be reaching the other phone
+const inst = Math.random().toString(36).slice(2);
+const MEDIA = {
+  video: { facingMode: 'user', width: { ideal: 320 }, height: { ideal: 240 }, frameRate: { ideal: 15, max: 20 } },
+  audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
+};
+
+// If the game is opened a second time on this phone, the older copy hands over camera & mic.
+const bc = 'BroadcastChannel' in window ? new BroadcastChannel('mvr-call') : null;
+if (bc) bc.onmessage = (e) => {
+  if (e.data && e.data.claim && e.data.claim !== inst && (local || want)) {
+    teardown(false); stopLocal(); want = false; paused = false; status = 'off';
+    renderCall();
+    ctx.toast('Camera & voice moved to your other window.');
+  }
+};     // so the game can switch layouts when a call starts or stops
 
 const vMe = mkVideo(true);
 const vOpp = mkVideo(false);
@@ -84,16 +102,14 @@ async function start() {
     ctx.toast('This phone’s browser can’t do video calls. Try Safari or Chrome.');
     return;
   }
+  if (bc) bc.postMessage({ claim: inst });            // free the camera from any other copy
   try {
-    local = await navigator.mediaDevices.getUserMedia({
-      video: { facingMode: 'user', width: { ideal: 320 }, height: { ideal: 240 }, frameRate: { ideal: 15, max: 20 } },
-      audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
-    });
+    local = await getMedia();
   } catch (e) {
     ctx.toast('Camera or microphone was blocked. Allow them in your phone’s settings for this website.', 5000);
     return;
   }
-  micOn = true; camOn = true;
+  micOn = true; camOn = true; paused = false; needTap = false; sendIssue = false;
   vMe.srcObject = local;
   vMe.play().catch(() => {});
   vOpp.play().catch(() => {});        // unlock sound on iPhone while we have the tap
@@ -186,6 +202,64 @@ function teardown(tellServer) {
   vOpp.srcObject = null;
 }
 
+// Get camera & mic. If another copy of the game still holds them, ask it to let go and try again.
+async function getMedia() {
+  try {
+    const st = await navigator.mediaDevices.getUserMedia(MEDIA);
+    watchTracks(st);
+    return st;
+  } catch (e) {
+    if (e && e.name === 'NotAllowedError') throw e;
+    if (bc) bc.postMessage({ claim: inst });
+    await new Promise((r) => setTimeout(r, 800));
+    const st = await navigator.mediaDevices.getUserMedia(MEDIA);
+    watchTracks(st);
+    return st;
+  }
+}
+
+function watchTracks(st) {
+  st.getTracks().forEach((t) => t.addEventListener('ended', () => {
+    if (want && local === st && !paused && !document.hidden) restartMedia().catch(() => { needTap = true; renderCall(); });
+  }));
+}
+
+// Swap in fresh camera & mic without dropping the call.
+async function restartMedia() {
+  const fresh = await getMedia();
+  fresh.getAudioTracks().forEach((t) => (t.enabled = micOn));
+  fresh.getVideoTracks().forEach((t) => (t.enabled = camOn));
+  if (pc) {
+    for (const tr of pc.getTransceivers()) {
+      const kind = tr.receiver && tr.receiver.track && tr.receiver.track.kind;
+      const t = kind && fresh.getTracks().find((x) => x.kind === kind);
+      if (t && tr.sender) await tr.sender.replaceTrack(t);
+    }
+  }
+  const old = local;
+  local = fresh;
+  if (old) old.getTracks().forEach((t) => t.stop());
+  vMe.srcObject = local;
+  vMe.play().catch(() => {});
+  paused = false; needTap = false; sendIssue = false; lastSent = null; stuck = 0;
+  renderCall();
+}
+
+// Every few seconds, check our sound is actually going out.
+let lastSent = null, stuck = 0;
+setInterval(async () => {
+  if (status !== 'live' || !pc || !local || document.hidden || paused) { lastSent = null; stuck = 0; return; }
+  let sent = null;
+  try {
+    (await pc.getStats()).forEach((r) => { if (r.type === 'outbound-rtp' && r.kind === 'audio') sent = (sent || 0) + r.bytesSent; });
+  } catch { return; }
+  const dead = local.getAudioTracks().some((t) => t.readyState === 'ended');
+  if (micOn && (dead || (sent !== null && lastSent !== null && sent <= lastSent))) stuck++; else stuck = 0;
+  lastSent = sent;
+  const issue = stuck >= 2;
+  if (issue !== sendIssue) { sendIssue = issue; renderCall(); }
+}, 3000);
+
 function stopLocal() {
   if (local) local.getTracks().forEach((t) => t.stop());
   local = null;
@@ -209,13 +283,18 @@ function toggle(kind) {
   renderCall();
 }
 
-// iPhone turns the camera off when you leave the page; offer a quick restart.
+// Leaving the game lets go of camera & mic (so nothing else gets stuck with them);
+// coming back switches them on again and carries on the call.
 document.addEventListener('visibilitychange', () => {
-  if (!document.hidden && local && local.getVideoTracks().some((t) => t.readyState === 'ended')) {
-    hangUp();
-    ctx.toast('Camera stopped while you were away. Tap Camera & voice to start again.', 4000);
+  if (!want) return;
+  if (document.hidden) {
+    if (local) { local.getTracks().forEach((t) => t.stop()); paused = true; }
+  } else if (paused || (local && local.getTracks().some((t) => t.readyState === 'ended'))) {
+    if (bc) bc.postMessage({ claim: inst });
+    restartMedia().catch(() => { needTap = true; renderCall(); });
   }
 });
+window.addEventListener('pagehide', () => { if (local) local.getTracks().forEach((t) => t.stop()); });
 
 /* ---------------- drawing ---------------- */
 export function renderCall() {
@@ -252,11 +331,14 @@ export function renderCall() {
     if (status === 'waiting') note = ctx.oppOnline() ? `Waiting for ${opp} to tap Join…` : `Waiting for ${opp} to open the game…`;
     if (status === 'connecting') note = 'Connecting…';
     if (status === 'failed') note = 'Couldn’t connect. Camera &amp; voice needs you both on Wi-Fi.';
+    const warn = needTap || sendIssue;
+    if (warn && status !== 'failed') note = `${opp} may not be able to see or hear you — tap <b>↻</b>`;
     html = `
       <div class="ctrls">
         <button class="cround ${micOn ? '' : 'off'}" data-call="mic" aria-label="Microphone">${micOn ? icons.mic : icons.micOff}</button>
         <button class="cround ${camOn ? '' : 'off'}" data-call="cam" aria-label="Camera">${camOn ? icons.cam : icons.camOff}</button>
-        ${status === 'failed' ? '<button class="cbtn retry" data-call="retry">Try again</button>' : ''}
+        ${status === 'failed' ? '<button class="cbtn retry" data-call="retry">Try again</button>'
+          : `<button class="cround fix ${warn ? 'warn' : ''}" data-call="fix" aria-label="Restart my camera and microphone">↻</button>`}
         <button class="cround end" data-call="end" aria-label="End camera and voice">${icons.end}</button>
       </div>
       ${note ? `<div class="cnote">${note}</div>` : ''}`;
@@ -265,6 +347,7 @@ export function renderCall() {
   bar.querySelectorAll('[data-call]').forEach((b) => b.addEventListener('click', () => {
     const a = b.dataset.call;
     if (a === 'start') start();
+    if (a === 'fix') restartMedia().then(() => ctx.toast('Camera & mic restarted')).catch(() => ctx.toast('Couldn’t restart the camera. Close the browser fully and open the game again.', 5000));
     if (a === 'end') hangUp();
     if (a === 'mic' || a === 'cam') toggle(a);
     if (a === 'retry') { status = 'waiting'; teardown(false); onCallData(call && call.from === ctx.me() ? null : call); }

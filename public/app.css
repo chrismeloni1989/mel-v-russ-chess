@@ -290,3 +290,8 @@ body.callmode .pbar { min-height: 34px; padding: 0; }
 .drow { display: flex; gap: 8px; justify-content: center; }
 .dbtn { flex: 1; border-radius: 10px; padding: 10px; font-weight: 700; cursor: pointer; border: 1px solid #c9b48b; background: #fff; color: #2a2116; }
 .dbtn.yes { background: var(--brass); border-color: var(--brass); color: var(--brass-ink); }
+
+.cround.fix { font-size: 20px; font-weight: 700; }
+.cround.fix.warn { background: var(--brass); border-color: var(--brass); color: var(--brass-ink); animation: pulse 1.6s ease-in-out infinite; }
+.cside .ctrls { gap: 6px; flex-wrap: wrap; }
+.cside .cround { width: 35px; height: 35px; }
