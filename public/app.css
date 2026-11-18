@@ -235,10 +235,11 @@ a.btn { text-decoration: none; }
 body.callmode .top, body.callmode .footer { display: none; }
 body.callmode .app { padding-top: max(8px, env(safe-area-inset-top)); padding-bottom: max(8px, env(safe-area-inset-bottom)); }
 body.callmode #view { display: flex; flex-direction: column; gap: 8px; }
-body.callmode .boardwrap { width: min(100%, calc(100dvh - 240px)); margin: 0 auto; }
+body.callmode { --vid-h: clamp(160px, calc(100dvh - 100vw - 90px), 240px); }
+body.callmode .boardwrap { width: min(100%, calc(100dvh - var(--vid-h) - 116px)); margin: 0 auto; }
 body.callmode .board { box-shadow: 0 0 0 4px #3a2b1c, 0 0 0 5px #54402a, 0 10px 24px rgba(0,0,0,.45); }
 .callhead { display: flex; gap: 10px; align-items: stretch; }
-.callhead .vslot.big.on { width: 120px; height: 160px; border-color: var(--brass); }
+.callhead .vslot.big.on { width: calc(var(--vid-h) * 0.75); height: var(--vid-h); border-color: var(--brass); }
 .vslot.pip.on { position: absolute; right: 5px; bottom: 5px; width: 40px; height: 54px; border-radius: 8px; z-index: 3;
   border: 1px solid rgba(255,255,255,.55); box-shadow: 0 2px 8px rgba(0,0,0,.5); }
 .vslot.pip::after { font-size: 8px !important; padding: 2px !important; }
@@ -262,3 +263,30 @@ body.callmode .pbar { min-height: 34px; padding: 0; }
 .btn.undo.mini { width: auto; padding: 6px 12px; font-size: 13px; gap: 6px; flex: none; }
 .btn.undo.mini svg { width: 15px; height: 15px; }
 .crow .pname { font-weight: 600; display: flex; align-items: center; gap: 7px; white-space: nowrap; min-width: 0; }
+
+/* status + undo side by side in call mode */
+.srow { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+
+/* ---------- captured pieces panel ---------- */
+.taken { background: #e9dcc2; border-radius: 12px; padding: 4px 10px; display: flex; flex-direction: column; color: #2a2116; }
+.trow { display: flex; align-items: center; gap: 8px; min-height: 34px; }
+.trow + .trow { border-top: 1px solid rgba(42,33,22,.15); }
+.tname { font-weight: 700; font-size: 14px; display: flex; align-items: center; gap: 6px; white-space: nowrap; width: 104px; flex: none; }
+.taken .chip { font-size: 10px; padding: 1px 6px; }
+.taken .chip.w { background: #fff; border-color: #b9a888; }
+.tlabel { font-size: 12px; color: #6f604a; flex: none; }
+.tpcs { display: flex; flex-wrap: wrap; align-items: center; flex: 1; min-width: 0; }
+.tpcs i { width: 26px; height: 26px; margin-right: -4px; background-size: contain; background-repeat: no-repeat; display: inline-block; }
+.tpcs em { font-size: 12px; color: #8a7a62; font-style: normal; }
+.tadv { font-weight: 700; font-size: 13px; color: #2a2116; background: rgba(42,33,22,.1); border-radius: 99px; padding: 1px 7px; flex: none; }
+
+/* ---------- draw offer ---------- */
+.drawban { position: absolute; left: 50%; top: 10px; transform: translateX(-50%); z-index: 6; width: min(92%, 320px);
+  background: #fbf3e2; color: #2a2116; border-radius: 14px; padding: 12px 14px; text-align: center;
+  box-shadow: 0 10px 30px rgba(0,0,0,.45); border: 2px solid var(--brass); display: flex; flex-direction: column; gap: 8px; }
+.drawban b { font-family: var(--display); font-size: 19px; }
+.drawban small { font-size: 11px; color: #6f604a; }
+.drawban.mine { padding: 8px 12px; font-size: 13px; font-weight: 600; border-width: 1px; opacity: .95; }
+.drow { display: flex; gap: 8px; justify-content: center; }
+.dbtn { flex: 1; border-radius: 10px; padding: 10px; font-weight: 700; cursor: pointer; border: 1px solid #c9b48b; background: #fff; color: #2a2116; }
+.dbtn.yes { background: var(--brass); border-color: var(--brass); color: var(--brass-ink); }

@@ -90,6 +90,12 @@ function noticeChanges(prev, cur) {
     if (last.by !== cur.me && navigator.vibrate) navigator.vibrate(60);
   }
   lastMoveCount = n;
+  const dd = cur.game && cur.game.lastDrawDeclined;
+  const pdd = prev && prev.game && prev.game.lastDrawDeclined;
+  if (prev && dd && dd.by !== cur.me && (!pdd || pdd.at !== dd.at)) toast(`${NAMES[dd.by]} declined the draw`);
+  const off = cur.game && cur.phase === 'play' && cur.game.drawOffer;
+  const poff = prev && prev.game && prev.game.drawOffer;
+  if (prev && off && off.by !== cur.me && (!poff || poff.at !== off.at) && navigator.vibrate) navigator.vibrate([60, 60, 60]);
   if (cur.toss && cur.toss.at && cur.toss.at > tossShownAt && serverNow() - cur.toss.at < 15000) {
     tossShownAt = cur.toss.at;
     store.set('mvr-toss-shown', String(tossShownAt));
@@ -280,7 +286,6 @@ function callStrip() {
   return `
     <div class="callstrip">
       <div class="vslot" data-slot="opp" data-name="${NAMES[other(S.me)]}"></div>
-      <div class="vslot" data-slot="me" data-name="You"></div>
     </div>
     <div class="callbar" id="callbar"></div>`;
 }
@@ -346,15 +351,27 @@ function gameHtml(callMode = false) {
   const material = (arr) => arr.reduce((t, p) => t + VALUE[p], 0);
   const adv = material(taken[myColor]) - material(taken[oppColor]);
 
-  const capsHtml = (color, a) => `
-    <div class="caps">${taken[color].map((p) => `<i class="pc-${color === 'w' ? 'b' : 'w'}${p}"></i>`).join('')}${a > 0 ? `<span class="adv">+${a}</span>` : ''}</div>`;
+  const takenPanel = () => {
+    const row = (color) => {
+      const who = color === 'w' ? g.white : g.black;
+      const a = color === myColor ? adv : -adv;
+      const pcs = taken[color].map((p) => `<i class="pc-${color === 'w' ? 'b' : 'w'}${p}"></i>`).join('');
+      return `
+        <div class="trow">
+          <span class="tname">${NAMES[who]} <span class="chip ${color}">${color === 'w' ? 'White' : 'Black'}</span></span>
+          <span class="tlabel">took</span>
+          <span class="tpcs">${pcs || '<em>nothing yet</em>'}</span>
+          ${a > 0 ? `<span class="tadv">+${a}</span>` : ''}
+        </div>`;
+    };
+    return `<div class="taken">${row('w')}${row('b')}</div>`;
+  };
 
   const bar = (who, color, isOpp) => `
     <div class="pbar">
       <div class="vslot" data-slot="${isOpp ? 'opp' : 'me'}"></div>
       <span class="pname">${isOpp ? `<span class="dot ${pres.oppOnline ? 'on' : ''}" id="oppDot"></span>` : ''}${NAMES[who]}
         <span class="chip ${color}">${color === 'w' ? 'White' : 'Black'}</span></span>
-      ${capsHtml(color, isOpp ? -adv : adv)}
     </div>`;
 
   // status line
@@ -417,6 +434,23 @@ function gameHtml(callMode = false) {
     actions.push(`<button class="btn primary" data-act="new">Start next game</button>`);
   }
 
+  const offer = S.phase === 'play' && g.drawOffer;
+  let drawBanner = '';
+  if (offer && offer.by === opp) {
+    drawBanner = `
+      <div class="drawban">
+        <b>${NAMES[opp]} offers a draw</b>
+        <div class="drow"><button class="dbtn yes" data-act="accept-draw">Accept</button><button class="dbtn" data-act="decline-draw">Decline</button></div>
+        <small>Or just make a move to carry on playing.</small>
+      </div>`;
+  } else if (offer && offer.by === me) {
+    drawBanner = `<div class="drawban mine">You offered a draw — waiting for ${NAMES[opp]}</div>`;
+  }
+  const canOffer = S.phase === 'play' && turnPlayer === me && !offer;
+  if (canOffer && g.moves.length >= 2) {
+    actions.push(`<button class="btn ghost" data-act="offer-draw">½ Offer a draw</button>`);
+  }
+
   if (callMode) {
     // Compact layout for camera & voice: everything fits on one screen, no scrolling.
     let short = status;
@@ -426,28 +460,24 @@ function gameHtml(callMode = false) {
     const draws = S.score.draws ? ` <span class="dr">· ${S.score.draws} draw${S.score.draws === 1 ? '' : 's'}</span>` : '';
     return `
     <div class="callhead">
-      <div class="vslot big" data-slot="opp"><div class="vslot pip" data-slot="me"></div></div>
+      <div class="vslot big" data-slot="opp"></div>
       <div class="cside">
         <div class="crow">
           <span class="pname"><span class="dot ${pres.oppOnline ? 'on' : ''}" id="oppDot"></span>${NAMES[opp]}
             <span class="chip ${oppColor}">${oppColor === 'w' ? 'White' : 'Black'}</span></span>
           <button class="iconbtn sm" id="menuBtn2" aria-label="Menu"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
         </div>
-        ${capsHtml(oppColor, -adv)}
         <div class="cscore">Mel <b>${S.score.mel}</b> – <b>${S.score.russ}</b> Russ${draws}</div>
-        <div class="status small ${cls}">${short}</div>
+        <div class="srow"><div class="status small ${cls}">${short}</div>${undo}</div>
         <div class="callbar" id="callbar"></div>
       </div>
     </div>
     <div class="boardwrap">
       ${boardHtml(chess, myColor)}
       ${overlay}
+      ${drawBanner}
     </div>
-    <div class="pbar mine">
-      <span class="pname">${NAMES[me]} <span class="chip ${myColor}">${myColor === 'w' ? 'White' : 'Black'}</span></span>
-      ${undo}
-      ${capsHtml(myColor, adv)}
-    </div>
+    ${takenPanel()}
     ${S.phase === 'over' ? '<div class="actions"><button class="btn primary" data-act="new">Start next game</button></div>' : ''}
     ${promoPick ? promoSheet(myColor) : ''}`;
   }
@@ -457,8 +487,10 @@ function gameHtml(callMode = false) {
     <div class="boardwrap">
       ${boardHtml(chess, myColor)}
       ${overlay}
+      ${drawBanner}
     </div>
     ${bar(me, myColor, false)}
+    ${takenPanel()}
     <div class="callbar" id="callbar"></div>
     <div class="status ${cls}">${status}</div>
     <div class="sub" id="presence">${sub}</div>
@@ -524,6 +556,9 @@ function promoSheet(color) {
 function wire() {
   $view.querySelectorAll('[data-act]').forEach((b) => b.addEventListener('click', () => {
     const type = b.dataset.act;
+    const oppName = NAMES[other(S.me)];
+    if (type === 'offer-draw' && !confirm(`Offer ${oppName} a draw?\n\nIf ${oppName} accepts, the game ends as a draw.`)) return;
+    if (type === 'accept-draw' && !confirm('Accept the draw? The game ends as a draw.')) return;
     if (type === 'toss') {
       const coin = $view.querySelector('.coin');
       if (coin) coin.className = 'coin spin-heads';
@@ -614,6 +649,7 @@ document.getElementById('menuBtn').addEventListener('click', () => {
       <a class="btn wa" target="_blank" rel="noopener" href="${waLink(`♟️ Here's your private link for Mel v Russ chess, ${opp} — keep it safe:\n${S.oppLink}`)}">${icon.wa} Re-send ${opp} their link</a>
       <label for="mPhone">${opp}'s WhatsApp number (optional — opens their chat directly)</label>
       <input id="mPhone" inputmode="tel" placeholder="e.g. 07700 900123" value="${store.get('mvr-opp-phone') || ''}">
+      ${drawMenuItem()}
       ${S.phase === 'play' ? '<button class="btn danger ghost" id="mResign">Resign this game</button>' : ''}
       <button class="btn danger ghost" id="mReset">Start over (new links, score 0–0)</button>
       <button class="btn ghost" id="mClose">Close</button>
@@ -635,6 +671,10 @@ document.getElementById('menuBtn').addEventListener('click', () => {
       ['mvr-token', 'mvr-me', 'mvr-toss-shown'].forEach((k) => store.del(k));
       location.href = '/';
     } catch (e) { toast(e.message); }
+  };
+  const md = bg.querySelector('#mDraw');
+  if (md) md.onclick = () => {
+    if (confirm(`Offer ${opp} a draw?\n\nIf ${opp} accepts, the game ends as a draw.`)) { close(); act({ type: 'offer-draw' }); }
   };
   const r = bg.querySelector('#mResign');
   if (r) r.onclick = () => {
@@ -658,4 +698,17 @@ if (token) poll(true);
 else {
   fetch(API).then((r) => r.json()).then((d) => (d.needsSetup ? renderSetup() : renderNoAccess()))
     .catch(() => renderNoAccess());
+}
+
+function drawMenuItem() {
+  if (!S || S.phase !== 'play' || !S.game) return '';
+  const g = S.game;
+  if (g.drawOffer) {
+    return g.drawOffer.by === S.me
+      ? '<button class="btn ghost" disabled>Draw offered — waiting for an answer</button>'
+      : '<button class="btn ghost" disabled>A draw has been offered to you — answer it on the board</button>';
+  }
+  return isMyTurn()
+    ? '<button class="btn" id="mDraw">½ Offer a draw</button>'
+    : '<button class="btn ghost" disabled>½ Offer a draw (on your turn)</button>';
 }

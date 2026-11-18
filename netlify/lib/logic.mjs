@@ -116,6 +116,8 @@ export function apply(state, me, action, now = Date.now()) {
         mv = chess.move({ from: action.from, to: action.to, promotion: action.promotion || 'q' });
       } catch { fail('That move is not allowed.'); }
       g.moves.push({ from: mv.from, to: mv.to, promotion: mv.promotion, san: mv.san, by: me, at: now });
+      // Moving instead of answering a draw offer turns it down.
+      if (g.drawOffer && g.drawOffer.by !== me) g.drawOffer = null;
       finishIfOver(s, chess, me);
       break;
     }
@@ -125,9 +127,34 @@ export function apply(state, me, action, now = Date.now()) {
       const last = g.moves[g.moves.length - 1];
       if (last.by !== me) fail('You can only undo your own last move.');
       if (now - last.at > UNDO_MS + UNDO_GRACE_MS) fail('Too late — undo only works for 5 seconds.');
-      if (g.result && g.result.reason === 'resigned') fail('Cannot undo after a resignation.');
+      if (g.result && (g.result.reason === 'resigned' || g.result.reason === 'mutual agreement')) fail('Cannot undo now — the game has ended.');
       if (g.result) unEndGame(s);
       g.moves.pop();
+      break;
+    }
+    case 'offer-draw': {
+      if (s.phase !== 'play') fail('No game in progress.');
+      const g = s.game;
+      const turnPlayer = replay(g.moves).turn() === 'w' ? g.white : g.black;
+      if (me !== turnPlayer) fail('You can only offer a draw on your turn.');
+      if (g.drawOffer) fail(g.drawOffer.by === me ? 'You have already offered a draw.' : `${NAMES[g.drawOffer.by]} has offered you a draw — accept or decline it.`);
+      g.drawOffer = { by: me, at: now, move: g.moves.length };
+      break;
+    }
+    case 'accept-draw': {
+      const g = s.game;
+      if (s.phase !== 'play' || !g.drawOffer) fail('There is no draw offer.');
+      if (g.drawOffer.by === me) fail('You made this offer.');
+      g.drawOffer = null;
+      endGame(s, { winner: null, reason: 'mutual agreement' });
+      break;
+    }
+    case 'decline-draw': {
+      const g = s.game;
+      if (!g || !g.drawOffer) fail('There is no draw offer.');
+      if (g.drawOffer.by === me) fail('You made this offer.');
+      g.drawOffer = null;
+      g.lastDrawDeclined = { by: me, at: now };
       break;
     }
     case 'resign': {
